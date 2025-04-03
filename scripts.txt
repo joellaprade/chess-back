@@ -1,4 +1,13 @@
-npm i mongoose ws cors node-cache cookie-parser helmet dotenv typescript @types/cookie --save-dev
+npm i express mongoose dotenv ws cors node-cache cookie-parser helmet
+
+npm i -D typescript tsx @types/express @types/cookie @types/ws @types/cors @types/cookie-parser
 
 npx tsc --init
 
+PACKAGE.JSON:
+"scripts": {
+  "dev": "tsx watch src/server.ts"
+}
+
+TSCONFIG.JSON:
+"module": "NodeNext",

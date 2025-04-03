@@ -1,9 +1,9 @@
 import { Router } from "express";
-import someRoutes from "./someRoutes"
+// import someRoutes from "./someRoutes"
 
 const router = Router()
 
-router.use('/some-routes', someRoutes)
+// router.use('/some-routes', someRoutes)
 
 
 export default router;
