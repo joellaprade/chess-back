@@ -1,0 +1,4 @@
+npm i mongoose ws cors node-cache cookie-parser helmet dotenv typescript @types/cookie --save-dev
+
+npx tsc --init
+
