@@ -24,12 +24,6 @@ app.use(cors(corsOptions))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-app.use((req, res, next) => {
-  if(req.url.includes('/authors'))
-  console.info(req.url)
-  next()
-})
-
 app.use('/api', routes)
 
 export default app
