@@ -1,11 +1,16 @@
+import dotenv from 'dotenv'
+dotenv.config();
 import app from './config/app'
 import { createWSS } from './config/websockets';
 import connectDB from './config/database'
 import http from "http";
+import {initCloudinary} from "./config/cloudinary"
+
 
 const PORT = process.env.PORT || 8000
 const server = http.createServer(app)
 const { wss } = createWSS()
+initCloudinary();
 
 connectDB().then(() => {
   server.listen(PORT, () => {

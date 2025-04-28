@@ -1,9 +1,8 @@
 import { Router } from "express";
-// import someRoutes from "./someRoutes"
+import fileManager from "./fileManager.route"
 
 const router = Router()
 
-// router.use('/some-routes', someRoutes)
-
+router.use('/file-manager', fileManager)
 
 export default router;
