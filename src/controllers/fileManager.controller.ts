@@ -1,5 +1,4 @@
 import { Request, Response } from "express"
-import { cloudinary } from "../config/cloudinary"
 import { handleCloudlyUpload } from "../services/cloudinary.service"
 import { User } from "../models/User"
 
@@ -14,7 +13,6 @@ export const updateUserProfilePicture = async (req: Request, res: Response) => {
     imageUrl = await handleCloudlyUpload(filePath)
     user.image = imageUrl
     await user.save();
-    console.log(user)
   }
 
   res.send({message: "success"})

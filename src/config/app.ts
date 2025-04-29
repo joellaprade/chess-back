@@ -21,6 +21,6 @@ app.use(cors(corsOptions))
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
-app.use('/api', routes)
+app.use('/express', routes)
 
 export default app
