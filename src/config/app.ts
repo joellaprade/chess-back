@@ -1,3 +1,5 @@
+import dotenv from 'dotenv'
+dotenv.config();
 import express from 'express'
 import cors from "cors"
 import cookieParser from "cookie-parser"
@@ -7,7 +9,6 @@ import routes from "../routes/index"
 const app = express()
 
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || ""
-
 
 const corsOptions = {
   origin: ALLOWED_ORIGINS,
