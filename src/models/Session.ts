@@ -10,7 +10,7 @@ const sessionSchema = new Schema({
       name: { type: String, required: true },
       username: { type: String, required: true },
       email: { type: String, required: true },
-      image: { type: String, required: true, default: "" },
+      image: { type: String, default: "" },
     },
   },
   createdAt: {
