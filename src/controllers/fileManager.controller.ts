@@ -6,7 +6,8 @@ import { Session } from "../models/Session"
 
 export const updateUserProfilePicture = async (req: Request, res: Response) => {
   const filePath = req.file?.path
-  let imageUrl = "";
+  let imageUrl = "https://cdn.esawebb.org/archives/images/screen/carinanebula3.jpg";
+  // let imageUrl = "https://res.cloudinary.com/dd86ogsbh/image/upload/v1745984447/bdbzs0xmpshrddhjxbpg.jpg";
   console.log(req.cookies)
   const userId: string = req.cookies.userId
   const user: User | null = await User.findById(userId)
@@ -18,6 +19,7 @@ export const updateUserProfilePicture = async (req: Request, res: Response) => {
     session.user.image = imageUrl
     await user.save();
     await session.save();
+    console.log(user)
   }
 
   res.send({message: "success"})

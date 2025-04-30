@@ -19,6 +19,18 @@ const corsOptions = {
 app.use(helmet())
 app.use(cookieParser())
 app.use(cors(corsOptions))
+// app.use(cors({
+//   origin: function (origin, callback) {
+//     if (!origin) return callback(null, true); 
+//     if (ALLOWED_ORIGINS.includes(origin)) {
+//       return callback(null, true);
+//     } else {
+//       return callback(new Error('Not allowed by CORS'));
+//     }
+//   },
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+// }));
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
