@@ -1,5 +1,5 @@
 import { IncomingMessage } from 'http';
-import WebSocket, { WebSocketServer } from 'ws';
+import { WebSocketServer } from 'ws';
 import * as cookie from 'cookie';
 import { handleMessage } from '../controllers/ws.controller';
 import { WS } from '../types/WS';
@@ -7,21 +7,6 @@ import { Player } from '../models/Player';
 
 export let wss: WebSocketServer | null = null;
 export const clients: Map<string, WS> = new Map()
-
-export const parse = (data: WebSocket.RawData | Record<string, any>) => {
-  if (Buffer.isBuffer(data) || typeof data === 'string') {
-    return JSON.parse(data.toString());
-  } else if (typeof data === 'object' && data !== null) {
-    return JSON.stringify(data);
-  }
-
-  throw new Error('Unsupported data type');
-};
-
-export const sendMsg = (ws: WS, data: Record<string, any>) => {
-  console.log(ws, data)
-  ws.send(parse(data))
-}
 
 export const setIsActive = async (ws: WS, isActive: boolean) => {
   const player: Player | null = await Player.findOne({userId: ws.userId})
