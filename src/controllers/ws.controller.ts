@@ -15,8 +15,8 @@ export const parse = (data: WebSocket.RawData | Record<string, any>) => {
   throw new Error('Unsupported data type');
 };
 
-export const sendMsg = (ws: WS, data: Instruction) => {
-  ws.send(parse(data))
+export const sendMsg = (ws: WS, payload: Instruction) => {
+  ws.send(parse(payload))
 }
 
 export const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
@@ -24,7 +24,7 @@ export const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
 
   switch(instruction.action) {
     case "add-friend":
-      await addFriend(ws, instruction.data)
+      await handleFriendRequest(ws, instruction.payload)
     break;
 
   }
@@ -33,6 +33,16 @@ export const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
 const validateAddRequest = (reciverPlayer: Player | null, senderPlayer: Player | null) => {
   if (!reciverPlayer || !senderPlayer) 
     return {isValid: false, message: "No se pudo encontrar al jugador"}
+
+  let isFriend = false
+  reciverPlayer.friends.forEach(friend => {
+    if (friend._id.toString() === senderPlayer._id.toString()) {
+      isFriend = true
+    }
+  })
+
+  if(isFriend) 
+    return {isValid: false, message: "Este usuario ya ha sido agregado como amigo"}
 
   // let isRepeated = false
   // reciverPlayer.friendReqs.forEach(req => {
@@ -55,21 +65,42 @@ const notifyReciver = async (ws: WS, reciverPlayer: Player) => {
       username: senderUser.username,
       image: senderUser.image,
     }
-    sendMsg(reciverWs, {action: "notify-reciver", data: senderData} as Instruction)
+    sendMsg(reciverWs, {
+      action: "notify-reciver", 
+      payload: senderData, 
+      replyAction: {
+        action: "add-friend", 
+        payload: {username: senderData.username}}
+      } as Instruction)
   }
 }
 
-const addFriend = async (ws: WS, {username}: Record<string, any>) => {
+const handleFriendRequest = async (ws: WS, {username}: Record<string, any>) => {
   const reciverPlayer: Player | null = await Player.findOne({username})
   const senderPlayer: Player | null = await Player.findOne({userId: ws.userId})
 
   const {isValid, message} = validateAddRequest(reciverPlayer, senderPlayer)
 
-  if(isValid || (!reciverPlayer || !senderPlayer)) 
-    return sendMsg(ws, {action: "message", data: message})
+  if(!isValid || (!reciverPlayer || !senderPlayer)) 
+    return sendMsg(ws, {action: "message", payload: message})
 
-  reciverPlayer.friendReqs.push(senderPlayer._id)
-  await reciverPlayer.save()
-
-  notifyReciver(ws, reciverPlayer)
+  if (senderPlayer.friendReqs.some((id: object) => 
+    id.toString() == reciverPlayer._id.toString()
+  )) {
+    await addFriends(reciverPlayer, senderPlayer)
+  } else {
+    reciverPlayer.friendReqs.push(senderPlayer._id)
+    await reciverPlayer.save()
+    notifyReciver(ws, reciverPlayer)
+  }
 } 
+
+const addFriends = async (reciverPlayer: Player, senderPlayer: Player) => {
+  senderPlayer.friendReqs.pull(reciverPlayer._id)
+
+  senderPlayer.friends.push(reciverPlayer._id)
+  reciverPlayer.friends.push(senderPlayer._id)
+
+  await senderPlayer.save()
+  await reciverPlayer.save()
+}

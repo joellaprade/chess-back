@@ -1,4 +1,5 @@
 export type Instruction = {
   action: string,
-  data: any,
+  payload: any,
+  replyAction?: Instruction
 }
