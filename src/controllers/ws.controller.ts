@@ -44,15 +44,15 @@ const validateAddRequest = (reciverPlayer: Player | null, senderPlayer: Player |
   if(isFriend) 
     return {isValid: false, message: "Este usuario ya ha sido agregado como amigo"}
 
-  // let isRepeated = false
-  // reciverPlayer.friendReqs.forEach(req => {
-  //   if (req._id.toString() === senderPlayer._id.toString()) {
-  //     isRepeated = true
-  //   }
-  // })
+  let isRepeated = false
+  reciverPlayer.friendReqs.forEach(req => {
+    if (req._id.toString() === senderPlayer._id.toString()) {
+      isRepeated = true
+    }
+  })
   
-  // if(isRepeated)     
-  //   return {isValid: false, message: "Ya se le ha mandado invitacion a este jugador"}
+  if(isRepeated)     
+    return {isValid: false, message: "Ya se le ha mandado invitacion a este jugador"}
 
   return {isValid: true, message: ""}
 }
@@ -75,6 +75,16 @@ const notifyReciver = async (ws: WS, reciverPlayer: Player) => {
   }
 }
 
+const addFriends = async (reciverPlayer: Player, senderPlayer: Player) => {
+  senderPlayer.friendReqs.pull(reciverPlayer._id)
+
+  senderPlayer.friends.push(reciverPlayer._id)
+  reciverPlayer.friends.push(senderPlayer._id)
+
+  await senderPlayer.save()
+  await reciverPlayer.save()
+}
+
 const handleFriendRequest = async (ws: WS, {username}: Record<string, any>) => {
   const reciverPlayer: Player | null = await Player.findOne({username})
   const senderPlayer: Player | null = await Player.findOne({userId: ws.userId})
@@ -94,13 +104,3 @@ const handleFriendRequest = async (ws: WS, {username}: Record<string, any>) => {
     notifyReciver(ws, reciverPlayer)
   }
 } 
-
-const addFriends = async (reciverPlayer: Player, senderPlayer: Player) => {
-  senderPlayer.friendReqs.pull(reciverPlayer._id)
-
-  senderPlayer.friends.push(reciverPlayer._id)
-  reciverPlayer.friends.push(senderPlayer._id)
-
-  await senderPlayer.save()
-  await reciverPlayer.save()
-}
