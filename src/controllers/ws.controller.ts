@@ -3,6 +3,7 @@ import { Player } from '../models/Player';
 import { Instruction } from '../types/instruction';
 import WebSocket from 'ws';
 import { WS } from '../types/WS';
+import { ObjectId } from 'mongodb';
 
 export const parse = (data: WebSocket.RawData | Record<string, any>) => {
   if (Buffer.isBuffer(data) || typeof data === 'string') {
@@ -15,15 +16,6 @@ export const parse = (data: WebSocket.RawData | Record<string, any>) => {
 };
 export const sendMsg = (ws: WS, payload: Instruction) => {
   ws.send(parse(payload))
-}
-export const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
-  const instruction: Instruction = parse(data)
-
-  switch(instruction.action) {
-    case "add-friend":
-      await handleFriendRequest(ws, instruction.payload)
-    break;
-  }
 }
 export const notifyPlayerOnlineStatus = async (ws: WS, player: Player) => {
   const friends = player.friends as unknown as Player[]
@@ -41,9 +33,24 @@ export const notifyPlayerOnlineStatus = async (ws: WS, player: Player) => {
       offlinePlayerMessage(ws, reciverWs)
   }
 }
+export const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
+  const instruction: Instruction = parse(data)
+
+  switch(instruction.action) {
+    case "add-friend":
+      await handleFriendRequest(ws, instruction.payload)
+    break;
+    case "remove-friend":
+      await handleRemoveFriend(ws, instruction.payload)
+    break;
+  }
+}
+
 
 //messages
-const firstFriendRequestMessage = async (ws: WS, reciverWs: WS) => {
+const firstFriendRequestMessage = (ws: WS, reciverWs?: WS) => {
+  if(!reciverWs) return
+  
   sendMsg(reciverWs, {
     action: "notify-friend-request", 
     payload: ws.user, 
@@ -52,10 +59,17 @@ const firstFriendRequestMessage = async (ws: WS, reciverWs: WS) => {
       payload: {username: ws.user.username}}
     })
 }
-const newFriendMessage = async (ws: WS, reciverWs: WS) => {
+const newFriendMessage = (ws: WS, reciverWs?: WS) => {
+  if(!reciverWs) return
+
   sendMsg(reciverWs, {
     action: "notify-only-new-friend", 
     payload: ws.user, 
+  })
+
+  sendMsg(ws, {
+    action: "notify-only-new-friend", 
+    payload: reciverWs.user, 
   })
 }
 const onlinePlayerMessage = (ws: WS, reciverWs: WS) => {
@@ -68,6 +82,19 @@ const offlinePlayerMessage = (ws: WS, reciverWs: WS) => {
   sendMsg(reciverWs, {
     action: "notify-only-is-not-online",
     payload: ws.user
+  })
+}
+const removedFriendMessage = (ws: WS, reciverWs?: WS) => {
+  if(reciverWs){
+    sendMsg(reciverWs, {
+      action: "notify-only-removed-friend",
+      payload: ws.user
+    })
+  }
+
+  sendMsg(ws, {
+    action: "notify-only-removed-friend",
+    payload: reciverWs?.user
   })
 }
 
@@ -114,18 +141,32 @@ const handleFriendRequest = async (ws: WS, {username}: Record<string, any>) => {
 
   const {isValid, message} = validateAddRequest(reciverPlayer, senderPlayer)
 
-  if(!isValid || !reciverPlayer || !senderPlayer || !reciverWs) 
-    return sendMsg(ws, {action: "message", payload: {message}})
+  if(!isValid || !reciverPlayer || !senderPlayer) 
+    return sendMsg(ws, {action: "error", payload: {message}})
 
   if (senderPlayer.friendReqs.some((id: object) => 
     id.toString() == reciverPlayer._id.toString()
   )) {
     await addFriends(reciverPlayer, senderPlayer)
     newFriendMessage(ws, reciverWs)
-    newFriendMessage(reciverWs, ws)
   } else {
     reciverPlayer.friendReqs.push(senderPlayer._id)
     await reciverPlayer.save()
     firstFriendRequestMessage(ws, reciverWs)
   }
 } 
+const handleRemoveFriend = async (ws: WS, {username}: Record<string, any>) => {
+  const reciverPlayer: Player | null = await Player.findOne({username}) 
+  const senderPlayer: Player | null = await Player.findOne({userId: ws.user.userId})
+  const reciverWs = clients.get(reciverPlayer?.userId.toString() || "")
+
+  if(!reciverPlayer || !senderPlayer) 
+    return sendMsg(ws, {action: "error", payload: {message: "No se pudo encontrar al jugador"}})
+
+  reciverPlayer.friends.pull(senderPlayer._id.toString())
+  senderPlayer.friends.pull(reciverPlayer._id.toString())
+  await reciverPlayer.save()
+  await senderPlayer.save()
+
+  removedFriendMessage(ws, reciverWs)
+}
