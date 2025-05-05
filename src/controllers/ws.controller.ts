@@ -3,7 +3,6 @@ import { Player } from '../models/Player';
 import { Instruction } from '../types/instruction';
 import WebSocket from 'ws';
 import { WS } from '../types/WS';
-import { User } from '../models/User';
 
 export const parse = (data: WebSocket.RawData | Record<string, any>) => {
   if (Buffer.isBuffer(data) || typeof data === 'string') {
@@ -14,11 +13,9 @@ export const parse = (data: WebSocket.RawData | Record<string, any>) => {
 
   throw new Error('Unsupported data type');
 };
-
 export const sendMsg = (ws: WS, payload: Instruction) => {
   ws.send(parse(payload))
 }
-
 export const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
   const instruction: Instruction = parse(data)
 
@@ -26,10 +23,55 @@ export const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
     case "add-friend":
       await handleFriendRequest(ws, instruction.payload)
     break;
+  }
+}
+export const notifyPlayerOnlineStatus = async (ws: WS, player: Player) => {
+  const friends = player.friends as unknown as Player[]
+  for(let i = 0; i < friends.length; i++) {
+    if(!friends[i].isOnline) 
+      continue
 
+    const reciverWs = clients.get(friends[i].userId.toString())
+    if(!reciverWs)
+      continue
+    
+    if(player.isOnline)
+      onlinePlayerMessage(ws, reciverWs)
+    else
+      offlinePlayerMessage(ws, reciverWs)
   }
 }
 
+//messages
+const firstFriendRequestMessage = async (ws: WS, reciverWs: WS) => {
+  sendMsg(reciverWs, {
+    action: "notify-friend-request", 
+    payload: ws.user, 
+    replyAction: {
+      action: "add-friend", 
+      payload: {username: ws.user.username}}
+    })
+}
+const newFriendMessage = async (ws: WS, reciverWs: WS) => {
+  sendMsg(reciverWs, {
+    action: "notify-only-new-friend", 
+    payload: ws.user, 
+  })
+}
+const onlinePlayerMessage = (ws: WS, reciverWs: WS) => {
+  sendMsg(reciverWs, {
+    action: "notify-only-is-online",
+    payload: ws.user
+  })
+}
+const offlinePlayerMessage = (ws: WS, reciverWs: WS) => {
+  sendMsg(reciverWs, {
+    action: "notify-only-is-not-online",
+    payload: ws.user
+  })
+}
+
+// actions
 const validateAddRequest = (reciverPlayer: Player | null, senderPlayer: Player | null) => {
   if (!reciverPlayer || !senderPlayer) 
     return {isValid: false, message: "No se pudo encontrar al jugador"}
@@ -56,25 +98,6 @@ const validateAddRequest = (reciverPlayer: Player | null, senderPlayer: Player |
 
   return {isValid: true, message: ""}
 }
-
-const notifyReciver = async (ws: WS, reciverPlayer: Player) => {
-  const senderUser: User | null = await User.findById(ws.userId)
-  const reciverWs = clients.get(reciverPlayer!.userId.toString())
-  if(reciverWs && senderUser) {
-    const senderData = {
-      username: senderUser.username,
-      image: senderUser.image,
-    }
-    sendMsg(reciverWs, {
-      action: "notify-reciver", 
-      payload: senderData, 
-      replyAction: {
-        action: "add-friend", 
-        payload: {username: senderData.username}}
-      } as Instruction)
-  }
-}
-
 const addFriends = async (reciverPlayer: Player, senderPlayer: Player) => {
   senderPlayer.friendReqs.pull(reciverPlayer._id)
 
@@ -84,23 +107,25 @@ const addFriends = async (reciverPlayer: Player, senderPlayer: Player) => {
   await senderPlayer.save()
   await reciverPlayer.save()
 }
-
 const handleFriendRequest = async (ws: WS, {username}: Record<string, any>) => {
   const reciverPlayer: Player | null = await Player.findOne({username})
-  const senderPlayer: Player | null = await Player.findOne({userId: ws.userId})
+  const senderPlayer: Player | null = await Player.findOne({userId: ws.user.userId})
+  const reciverWs = clients.get(reciverPlayer?.userId.toString() || "")
 
   const {isValid, message} = validateAddRequest(reciverPlayer, senderPlayer)
 
-  if(!isValid || (!reciverPlayer || !senderPlayer)) 
-    return sendMsg(ws, {action: "message", payload: message})
+  if(!isValid || !reciverPlayer || !senderPlayer || !reciverWs) 
+    return sendMsg(ws, {action: "message", payload: {message}})
 
   if (senderPlayer.friendReqs.some((id: object) => 
     id.toString() == reciverPlayer._id.toString()
   )) {
     await addFriends(reciverPlayer, senderPlayer)
+    newFriendMessage(ws, reciverWs)
+    newFriendMessage(reciverWs, ws)
   } else {
     reciverPlayer.friendReqs.push(senderPlayer._id)
     await reciverPlayer.save()
-    notifyReciver(ws, reciverPlayer)
+    firstFriendRequestMessage(ws, reciverWs)
   }
 } 

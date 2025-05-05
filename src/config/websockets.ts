@@ -1,42 +1,46 @@
 import { IncomingMessage } from 'http';
 import { WebSocketServer } from 'ws';
 import * as cookie from 'cookie';
-import { handleMessage } from '../controllers/ws.controller';
+import { handleMessage, notifyPlayerOnlineStatus } from '../controllers/ws.controller';
 import { WS } from '../types/WS';
 import { Player } from '../models/Player';
 
 export let wss: WebSocketServer | null = null;
 export const clients: Map<string, WS> = new Map()
 
-export const setIsActive = async (ws: WS, isActive: boolean) => {
-  const player: Player | null = await Player.findOne({userId: ws.userId})
-
-  if (player){
-    player.isOnline = isActive;
-    await player.save()
-  } 
-}
-
 const handleConection = async (ws: WS, req: IncomingMessage) => {
   console.info("connected")
 
   const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : undefined
   const userId = cookies?.userId
+  const player: Player = await Player.findOne({userId}).populate('friends')
 
   if(!userId) return
-  ws.userId = userId
-  clients.set(userId, ws)
 
-  await setIsActive(ws, true)
+  ws.user = {
+    userId,
+    username: player.username,
+    image: player?.image
+  }  
+  
+  player.isOnline = true;
+  await player.save()
+  await notifyPlayerOnlineStatus(ws, player)
+  clients.set(userId, ws)
 
   ws.on('message', (data) => handleMessage(ws, data))
   ws.on('close', () => {
-    setIsActive(ws, false)
+    player.isOnline = false;
+    player.save()
+    .then((r: any) => {
+      notifyPlayerOnlineStatus(ws, player)
+    }
+      
+    )
     console.info('disconected')
     clients.delete(userId)
   })
 }
-
 export const createWSS = () => {
   if(!wss) {
     wss = new WebSocketServer({ noServer: true });
