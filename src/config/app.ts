@@ -16,7 +16,7 @@ const corsOptions = {
   credentials: true
 };
 
-app.use(helmet())
+app.use(helmet()) 
 app.use(cookieParser())
 app.use(cors(corsOptions))
 
