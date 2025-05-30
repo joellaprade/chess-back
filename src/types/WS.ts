@@ -2,7 +2,7 @@ import { WebSocket } from 'ws';
 
 export type WS = WebSocket & {
   user: {
-    userId: string;
+    playerId: string;
     username: string;
     image?: string;
   }
