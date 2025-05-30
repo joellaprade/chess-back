@@ -1,0 +1,19 @@
+para los juegos, voy a tener un array (games) de touples (game) de WS donde se almacenaran
+
+cuando game.length === 2, redirigir de loading a game
+
+
+Player {
+username
+  id
+  image
+  color
+}
+
+Game {
+  time
+  turn
+}
+
+
+cuando A moves, manda ws con origin desinaion a backend, en touple, se busca a B y se le manda cords

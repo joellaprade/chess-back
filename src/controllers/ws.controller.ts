@@ -3,7 +3,6 @@ import { Player } from '../models/Player';
 import { Instruction } from '../types/instruction';
 import WebSocket from 'ws';
 import { WS } from '../types/WS';
-import { ObjectId } from 'mongodb';
 
 export const parse = (data: WebSocket.RawData | Record<string, any>) => {
   if (Buffer.isBuffer(data) || typeof data === 'string') {
@@ -18,6 +17,7 @@ export const sendMsg = (ws: WS, payload: Instruction) => {
   ws.send(parse(payload))
 }
 export const notifyPlayerOnlineStatus = async (ws: WS, player: Player) => {
+  // Cuando un usuario se conecta, revisa si sus amigos estan conectados para notificarlos
   const friends = player.friends as unknown as Player[]
   for(let i = 0; i < friends.length; i++) {
     if(!friends[i].isOnline) 
@@ -34,6 +34,7 @@ export const notifyPlayerOnlineStatus = async (ws: WS, player: Player) => {
   }
 }
 export const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
+  // En base a la accion, decide que funcion correr
   const instruction: Instruction = parse(data)
 
   switch(instruction.action) {
@@ -147,9 +148,11 @@ const handleFriendRequest = async (ws: WS, {username}: Record<string, any>) => {
   if (senderPlayer.friendReqs.some((id: object) => 
     id.toString() == reciverPlayer._id.toString()
   )) {
+    console.log('ran1')
     await addFriends(reciverPlayer, senderPlayer)
     newFriendMessage(ws, reciverWs)
   } else {
+    console.log('ran2')
     reciverPlayer.friendReqs.push(senderPlayer._id)
     await reciverPlayer.save()
     firstFriendRequestMessage(ws, reciverWs)

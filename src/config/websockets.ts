@@ -7,6 +7,9 @@ import { Player } from '../models/Player';
 
 export let wss: WebSocketServer | null = null;
 export const clients: Map<string, WS> = new Map()
+export const games: Map<string, [Player, Player]> = new Map()
+
+
 
 const handleConection = async (ws: WS, req: IncomingMessage) => {
   console.info("connected")
@@ -32,7 +35,7 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
   ws.on('close', () => {
     player.isOnline = false;
     player.save()
-    .then((r: any) => {
+    .then(() => {
       notifyPlayerOnlineStatus(ws, player)
     }
       
