@@ -1,17 +1,18 @@
+import WebSocket from 'ws';
+import * as cookie from 'cookie';
 import { IncomingMessage } from 'http';
 import { WebSocketServer } from 'ws';
-import * as cookie from 'cookie';
-import WebSocket from 'ws';
+
 import { WS } from '../types/WS';
 import { Instruction } from '../types/instruction';
-import { wsPlayer } from '../types/wsPlayer';
+import { Game } from '../types/Game';
 import { Player } from '../models/Player';
-import { handleFriendRequest, handleRemoveFriend } from '../controllers/ws.controller';
-import { handleGameRequest, handleGameAccept } from '../controllers/game.controller';
+
+import { handleFriendRequest, handleRemoveFriend, handleGameRequest, handleGameAccept } from '../controllers/ws.controller';
 
 export let wss: WebSocketServer | null = null;
 export const clients: Map<string, WS> = new Map()
-export const games: Map<string, [wsPlayer | null, wsPlayer | null]> = new Map()
+export const games: Map<string, Game> = new Map()
 
 // utils
 export const parse = (data: WebSocket.RawData | Record<string, any>) => {
@@ -24,6 +25,7 @@ export const parse = (data: WebSocket.RawData | Record<string, any>) => {
   throw new Error('Unsupported data type');
 };
 export const sendMsg = (ws: WS, payload: Instruction) => {
+  console.log(payload)
   ws.send(parse(payload))
 }
 
@@ -76,17 +78,18 @@ const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
   }
 }
 
-
 const handleConection = async (ws: WS, req: IncomingMessage) => {
   console.info("connected")
 
   const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : undefined
   const userId = cookies?.userId
-  const player: Player = await Player.findOne({userId}).populate('friends')
-  const playerId = player._id.toString()
-
+  
   if(!userId) return
 
+  let player: Player | null = await Player.findOne({userId}).populate('friends')
+  if(!player) return
+  
+  const playerId = player._id.toString()
   ws.user = {
     playerId,
     username: player.username,

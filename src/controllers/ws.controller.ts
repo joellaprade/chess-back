@@ -1,6 +1,9 @@
-import { clients, sendMsg } from '../config/websockets';
-import { Player } from '../models/Player';
+import crypto from "crypto";
+
 import { WS } from '../types/WS';
+
+import { clients, games, sendMsg, wss } from '../config/websockets';
+import { Player } from '../models/Player';
 
 //messages
 const firstFriendRequestMessage = (ws: WS, reciverWs?: WS) => {
@@ -40,6 +43,27 @@ const removedFriendMessage = (ws: WS, reciverWs?: WS) => {
     payload: reciverWs?.user
   })
 }
+const gameRequestMessage = (reciverWs: WS, payload: any, replyPayload: any) => {
+  sendMsg(reciverWs, {
+    action: "notify-game-request",
+    payload,
+    replyAction: {
+      action: "game-accept", 
+      payload: replyPayload
+    }
+  })
+}
+const startGameMessage = (ws1: WS, ws2: WS, gameId: string) => {
+  const payload: any[] = [{...ws1.user, ...ws1.player!},{...ws2.user, ...ws2.player!}, gameId]
+  sendMsg(ws1, {
+    action: "start-game",
+    payload: [...payload, true]
+  })
+  sendMsg(ws2, {
+    action: "start-game",
+    payload: [...payload, false]
+  })
+}
 
 // LOGIC
 const validateAddRequest = (reciverPlayer: Player | null, senderPlayer: Player | null) => {
@@ -76,6 +100,21 @@ const addFriends = async (reciverPlayer: Player, senderPlayer: Player) => {
 
   await senderPlayer.save()
   await reciverPlayer.save()
+}
+const createGame = (ws: WS) => {
+  const gameId = crypto.randomBytes(8).toString("hex");
+
+  ws.player = {isWhite: Math.random() > 0.5}
+
+  const playerWs1 = ws.player.isWhite ? ws : null
+  const playerWs2 = ws.player.isWhite ? null : ws
+
+  games.set(gameId, {
+    gameId,
+    players: [playerWs1, playerWs2],
+  })
+
+  return gameId
 }
 
 // ACTIONS
@@ -114,4 +153,29 @@ export const handleRemoveFriend = async (ws: WS, {username}: Record<string, any>
   await senderPlayer.save()
 
   removedFriendMessage(ws, reciverWs)
+}
+export const handleGameRequest = async (ws: WS, {playerId}: Record<string, string>) => {
+  const reciverWs = clients.get(playerId)
+  if(!reciverWs) return
+
+  const gameId = createGame(ws)
+
+  // SET COOKIE
+  gameRequestMessage(reciverWs, ws.user, {gameId})
+}
+export const handleGameAccept = async (ws: WS, {gameId}: Record<string, string>) => {
+  let game = games.get(gameId)
+  if(!game) return
+  
+  let [senderWs] = game.players.filter(p => p != null)
+  if(!senderWs?.player) return
+  
+  const isP1White = senderWs.player.isWhite
+  const p2Index = isP1White ? 1 : 0
+  ws.player = {isWhite: isP1White}
+
+  game.players[p2Index] = ws
+
+
+  startGameMessage(game.players[0]!, game.players[1]!, gameId)
 }
