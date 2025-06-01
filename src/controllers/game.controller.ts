@@ -19,7 +19,8 @@ const sendMove = (reciverPlauer: WS, origin: number, destination: number) => {
  
 // ACTIONS
 export const handleMove = (ws: WS, {origin, destination}: {origin: number, destination: number}) => {
-  const game = games.get(ws.gameId || "")
+        console.log('2')
+const game = games.get(ws.gameId || "")
   if(!game) return
   
   const {isWhitesTurn} = game
