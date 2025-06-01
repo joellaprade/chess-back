@@ -3,6 +3,8 @@ import { WebSocket } from 'ws';
 
 
 export type WS = WebSocket & {
+  userId: string;
+  gameId?: string;
   user: {
     playerId: string;
     username: string;

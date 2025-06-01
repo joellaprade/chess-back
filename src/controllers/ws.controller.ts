@@ -105,6 +105,7 @@ const createGame = (ws: WS) => {
   const gameId = crypto.randomBytes(8).toString("hex");
 
   ws.player = {isWhite: Math.random() > 0.5}
+  ws.gameId = gameId
 
   const playerWs1 = ws.player.isWhite ? ws : null
   const playerWs2 = ws.player.isWhite ? null : ws
@@ -112,6 +113,7 @@ const createGame = (ws: WS) => {
   games.set(gameId, {
     gameId,
     players: [playerWs1, playerWs2],
+    isWhitesTurn: true
   })
 
   return gameId
@@ -121,7 +123,7 @@ const createGame = (ws: WS) => {
 export const handleFriendRequest = async (ws: WS, {username}: Record<string, any>) => {
   const reciverPlayer: Player | null = await Player.findOne({username})
   const senderPlayer: Player | null = await Player.findById(ws.user.playerId)
-  const reciverWs = clients.get(reciverPlayer?._id.toString() || "")
+  const reciverWs = clients.get(reciverPlayer?.userId.toString() || "")
 
   const {isValid, message} = validateAddRequest(reciverPlayer, senderPlayer)
 
