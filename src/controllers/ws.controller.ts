@@ -104,7 +104,7 @@ const addFriends = async (reciverPlayer: Player, senderPlayer: Player) => {
 const createGame = (ws: WS) => {
   const gameId = crypto.randomBytes(8).toString("hex");
 
-  ws.player = {isWhite: Math.random() > 0.5}
+  ws.player = {isWhite: Math.random() > 0.5} 
   ws.gameId = gameId
 
   const playerWs1 = ws.player.isWhite ? ws : null

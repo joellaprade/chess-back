@@ -1,8 +1,5 @@
-import { Player } from '../models/Player';
-import { Instruction } from '../types/instruction';
-import WebSocket from 'ws';
 import { WS } from '../types/WS';
-import { clients, games, sendMsg } from '../config/websockets';
+import { games, sendMsg } from '../config/websockets';
 
 
 // MESSAGES
@@ -19,7 +16,6 @@ const sendMove = (reciverPlauer: WS, origin: number, destination: number) => {
  
 // ACTIONS
 export const handleMove = (ws: WS, {origin, destination}: {origin: number, destination: number}) => {
-        console.log('2')
 const game = games.get(ws.gameId || "")
   if(!game) return
   
@@ -27,6 +23,8 @@ const game = games.get(ws.gameId || "")
   const isCorrectPlayer = ws.player?.isWhite == isWhitesTurn
   if(!isCorrectPlayer) return
 
+  
+  // reciver es null, game no se inicia correctamente
   const senderPlayer = game.players[isWhitesTurn ? 0 : 1]
   const reciverPlayer = game.players[isWhitesTurn ? 1 : 0]
   if(!senderPlayer || !reciverPlayer) return

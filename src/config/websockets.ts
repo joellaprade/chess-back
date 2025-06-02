@@ -75,7 +75,6 @@ const handleReconnect = (ws: WS, payload: any) => {
 const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
   // En base a la accion, decide que funcion correr
   const instruction: Instruction = parse(data)
-      console.log(instruction)
 
   switch(instruction.action) {
     case "add-friend":
