@@ -2,17 +2,20 @@ import crypto from "crypto";
 
 import { WS } from '../types/WS';
 
-import { clients, games, sendMsg, wss } from '../config/websockets';
+import { clients, games, sendMsg } from '../config/websockets';
 import { Player } from '../models/Player';
+import { Game } from "../types/Game";
 
 //messages
 const firstFriendRequestMessage = (ws: WS, reciverWs?: WS) => {
   if(!reciverWs) return
   
   sendMsg(reciverWs, {
+    route: "homepage",
     action: "notify-friend-request", 
     payload: ws.user, 
     replyAction: {
+      route: "homepage",
       action: "add-friend", 
       payload: {username: ws.user.username}}
     })
@@ -21,11 +24,13 @@ const newFriendMessage = (ws: WS, reciverWs?: WS) => {
   if(!reciverWs) return
 
   sendMsg(reciverWs, {
+    route: "homepage",
     action: "notify-only-new-friend", 
     payload: ws.user, 
   })
 
   sendMsg(ws, {
+    route: "homepage",
     action: "notify-only-new-friend", 
     payload: reciverWs.user, 
   })
@@ -33,21 +38,25 @@ const newFriendMessage = (ws: WS, reciverWs?: WS) => {
 const removedFriendMessage = (ws: WS, reciverWs?: WS) => {
   if(reciverWs){
     sendMsg(reciverWs, {
+    route: "homepage",
       action: "notify-only-removed-friend",
       payload: ws.user
     })
   }
 
   sendMsg(ws, {
+    route: "homepage",
     action: "notify-only-removed-friend",
     payload: reciverWs?.user
   })
 }
 const gameRequestMessage = (reciverWs: WS, payload: any, replyPayload: any) => {
   sendMsg(reciverWs, {
+    route: "homepage",
     action: "notify-game-request",
     payload,
     replyAction: {
+      route: "homepage",
       action: "game-accept", 
       payload: replyPayload
     }
@@ -56,10 +65,12 @@ const gameRequestMessage = (reciverWs: WS, payload: any, replyPayload: any) => {
 const startGameMessage = (ws1: WS, ws2: WS, gameId: string) => {
   const payload: any[] = [{...ws1.user, ...ws1.player!},{...ws2.user, ...ws2.player!}, gameId]
   sendMsg(ws1, {
+    route: "homepage",
     action: "start-game",
     payload: [...payload, true]
   })
   sendMsg(ws2, {
+    route: "homepage",
     action: "start-game",
     payload: [...payload, false]
   })
@@ -109,12 +120,13 @@ const createGame = (ws: WS) => {
 
   const playerWs1 = ws.player.isWhite ? ws : null
   const playerWs2 = ws.player.isWhite ? null : ws
-
-  games.set(gameId, {
+  const game: Game = {
     gameId,
     players: [playerWs1, playerWs2],
     isWhitesTurn: true
-  })
+  }
+
+  games.set(gameId, game)
 
   return gameId
 }
@@ -128,7 +140,7 @@ export const handleFriendRequest = async (ws: WS, {username}: Record<string, any
   const {isValid, message} = validateAddRequest(reciverPlayer, senderPlayer)
 
   if(!isValid || !reciverPlayer || !senderPlayer) 
-    return sendMsg(ws, {action: "error", payload: {message}})
+    return sendMsg(ws, {route: "homepage", action: "error", payload: {message}})
 
   if (senderPlayer.friendReqs.some((id: object) => 
     id.toString() == reciverPlayer._id.toString()
@@ -147,7 +159,7 @@ export const handleRemoveFriend = async (ws: WS, {username}: Record<string, any>
   const reciverWs = clients.get(reciverPlayer?.userId.toString() || "")
 
   if(!reciverPlayer || !senderPlayer) 
-    return sendMsg(ws, {action: "error", payload: {message: "No se pudo encontrar al jugador"}})
+    return sendMsg(ws, {route: "homepage", action: "error", payload: {message: "No se pudo encontrar al jugador"}})
 
   reciverPlayer.friends.pull(senderPlayer._id.toString())
   senderPlayer.friends.pull(reciverPlayer._id.toString())

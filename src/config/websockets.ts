@@ -31,12 +31,14 @@ export const sendMsg = (ws: WS, payload: Instruction) => {
 
 const onlinePlayerMessage = (ws: WS, reciverWs: WS) => {
   sendMsg(reciverWs, {
+    route: "homepage",
     action: "notify-only-is-online",
     payload: ws.user
   })
 }
 const offlinePlayerMessage = (ws: WS, reciverWs: WS) => {
   sendMsg(reciverWs, {
+    route: "homepage",
     action: "notify-only-is-not-online",
     payload: ws.user
   })
@@ -72,10 +74,7 @@ const handleReconnect = (ws: WS, payload: any) => {
 
 
 }
-const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
-  // En base a la accion, decide que funcion correr
-  const instruction: Instruction = parse(data)
-
+const handleHomePageMessages = async (ws: WS, instruction: Instruction) => {
   switch(instruction.action) {
     case "add-friend":
       await handleFriendRequest(ws, instruction.payload)
@@ -89,12 +88,29 @@ const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
     case "game-accept":
       handleGameAccept(ws, instruction.payload)
     break;
+  }  
+}
+const handleGameMessages = async (ws: WS, instruction: Instruction) => {
+  switch(instruction.action) {
     case "move":
       handleMove(ws, instruction.payload)
       break
     case "reconnect":
       handleReconnect(ws, instruction.payload)
       break
+  }
+}
+const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
+  // En base a la accion, decide que funcion correr
+  const instruction: Instruction = parse(data)
+
+  switch(instruction.route) {
+    case "homepage":
+      handleHomePageMessages(ws, instruction)
+    break;
+    case "game":
+      handleGameMessages(ws, instruction)
+    break;
   }
 }
 
@@ -133,9 +149,7 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
     player.save()
     .then(() => {
       notifyPlayerOnlineStatus(ws, player)
-    }
-      
-    )
+    })
     console.info('disconected')
     clients.delete(playerId)
   })

@@ -6,6 +6,7 @@ import { games, sendMsg } from '../config/websockets';
 const sendMove = (reciverPlauer: WS, origin: number, destination: number) => {
   const payload = {origin, destination};
   sendMsg(reciverPlauer, {
+    route: "game",
     action: "start-game",
     payload
   })
@@ -16,7 +17,7 @@ const sendMove = (reciverPlauer: WS, origin: number, destination: number) => {
  
 // ACTIONS
 export const handleMove = (ws: WS, {origin, destination}: {origin: number, destination: number}) => {
-const game = games.get(ws.gameId || "")
+  const game = games.get(ws.gameId || "")
   if(!game) return
   
   const {isWhitesTurn} = game
@@ -24,7 +25,7 @@ const game = games.get(ws.gameId || "")
   if(!isCorrectPlayer) return
 
   
-  // reciver es null, game no se inicia correctamente
+  game.isWhitesTurn = !isWhitesTurn
   const senderPlayer = game.players[isWhitesTurn ? 0 : 1]
   const reciverPlayer = game.players[isWhitesTurn ? 1 : 0]
   if(!senderPlayer || !reciverPlayer) return
