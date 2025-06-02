@@ -71,9 +71,7 @@ const handleReconnect = (ws: WS, payload: any) => {
   ws.player = oldWs.player
   ws.gameId = oldWs.gameId
   const playerIndex = oldWs.player?.isWhite ? 0 : 1
-  console.log(game.players)
   game.players[playerIndex] = ws
-  console.log(game.players)
 }
 const handleHomePageMessages = async (ws: WS, instruction: Instruction) => {
   switch(instruction.action) {
