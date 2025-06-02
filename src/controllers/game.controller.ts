@@ -7,7 +7,7 @@ const sendMove = (reciverPlauer: WS, origin: number, destination: number) => {
   const payload = {origin, destination};
   sendMsg(reciverPlauer, {
     route: "game",
-    action: "start-game",
+    action: "move",
     payload
   })
 }

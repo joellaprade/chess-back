@@ -186,7 +186,8 @@ export const handleGameAccept = async (ws: WS, {gameId}: Record<string, string>)
   
   const isP1White = senderWs.player.isWhite
   const p2Index = isP1White ? 1 : 0
-  ws.player = {isWhite: isP1White}
+  ws.player = {isWhite: !isP1White}
+  ws.gameId = gameId
 
   game.players[p2Index] = ws
 

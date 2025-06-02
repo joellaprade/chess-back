@@ -69,10 +69,11 @@ const handleReconnect = (ws: WS, payload: any) => {
   if(!oldWs) return
 
   ws.player = oldWs.player
+  ws.gameId = oldWs.gameId
   const playerIndex = oldWs.player?.isWhite ? 0 : 1
+  console.log(game.players)
   game.players[playerIndex] = ws
-
-
+  console.log(game.players)
 }
 const handleHomePageMessages = async (ws: WS, instruction: Instruction) => {
   switch(instruction.action) {
@@ -126,7 +127,6 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
   if(!player) return
   
   const playerId = player._id.toString()
-  ws.gameId = 
   ws.userId = userId
   ws.user = {
     playerId,
