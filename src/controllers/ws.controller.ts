@@ -103,6 +103,22 @@ const validateAddRequest = (reciverPlayer: Player | null, senderPlayer: Player |
 
   return {isValid: true, message: ""}
 }
+const validateGameRequest = (reciverPlayer: Player | null, senderPlayer: Player | null) => {
+  if (!reciverPlayer || !senderPlayer) 
+    return {isValid: false, message: "No se pudo encontrar al jugador"}
+
+  let isRepeated = false
+  reciverPlayer.gameReqs.forEach(req => {
+    if (req._id.toString() === senderPlayer._id.toString()) {
+      isRepeated = true
+    }
+  })
+  
+  if(isRepeated)     
+    return {isValid: false, message: "Ya se le ha mandado invitacion a este jugador"}
+
+  return {isValid: true, message: ""}
+}
 const addFriends = async (reciverPlayer: Player, senderPlayer: Player) => {
   senderPlayer.friendReqs.pull(reciverPlayer._id)
 
@@ -130,17 +146,40 @@ const createGame = (ws: WS) => {
 
   return gameId
 }
+const clearGameRequests = async (sender: WS, players: [WS | null, WS | null]) => {
+  // sender es el que recivio el req y esta enviando la aceptacion
+  if(!players[0] || !players[1]) return
+
+  const id0 = players[0].user.playerId
+  const id1 = players[1].user.playerId
+  const player0 = await Player.findById(id0)
+  const player1 = await Player.findById(id1)
+
+  if(!player0 || !player1) return
+
+  if (sender.user.playerId == id0) {
+    player0.gameReqs = player0.gameReqs.filter(
+      (req: any) => !req.sender.equals(player1._id)
+    );
+    await player0.save();
+  } else {
+    player1.gameReqs = player1.gameReqs.filter(
+      (req: any) => !req.sender.equals(player0._id)
+    );
+    await player1.save();
+  }
+}
 
 // ACTIONS
 export const handleFriendRequest = async (ws: WS, {username}: Record<string, any>) => {
   const reciverPlayer: Player | null = await Player.findOne({username})
   const senderPlayer: Player | null = await Player.findById(ws.user.playerId)
-  const reciverWs = clients.get(reciverPlayer?.userId.toString() || "")
+  const reciverWs = clients.get(reciverPlayer?._id.toString() || "")
 
   const {isValid, message} = validateAddRequest(reciverPlayer, senderPlayer)
 
   if(!isValid || !reciverPlayer || !senderPlayer) 
-    return sendMsg(ws, {route: "homepage", action: "error", payload: {message}})
+    return sendMsg(ws, {route: "homepage", action: "notify-only-error", payload: {message}})
 
   if (senderPlayer.friendReqs.some((id: object) => 
     id.toString() == reciverPlayer._id.toString()
@@ -156,10 +195,10 @@ export const handleFriendRequest = async (ws: WS, {username}: Record<string, any
 export const handleRemoveFriend = async (ws: WS, {username}: Record<string, any>) => {
   const reciverPlayer: Player | null = await Player.findOne({username}) 
   const senderPlayer: Player | null = await Player.findById(ws.user.playerId)
-  const reciverWs = clients.get(reciverPlayer?.userId.toString() || "")
+  const reciverWs = clients.get(reciverPlayer?._id.toString() || "")
 
   if(!reciverPlayer || !senderPlayer) 
-    return sendMsg(ws, {route: "homepage", action: "error", payload: {message: "No se pudo encontrar al jugador"}})
+    return sendMsg(ws, {route: "homepage", action: "notify-only-error", payload: {message: "No se pudo encontrar al jugador"}})
 
   reciverPlayer.friends.pull(senderPlayer._id.toString())
   senderPlayer.friends.pull(reciverPlayer._id.toString())
@@ -169,13 +208,22 @@ export const handleRemoveFriend = async (ws: WS, {username}: Record<string, any>
   removedFriendMessage(ws, reciverWs)
 }
 export const handleGameRequest = async (ws: WS, {playerId}: Record<string, string>) => {
+  const reciverPlayer: Player | null = await Player.findById(playerId)
+  const senderPlayer: Player | null = await Player.findById(ws.user.playerId)
   const reciverWs = clients.get(playerId)
-  if(!reciverWs) return
+  
+  const {isValid, message} = validateGameRequest(reciverPlayer, senderPlayer)
+  
+  if(!isValid || !reciverPlayer || !senderPlayer || !reciverWs) 
+    return sendMsg(ws, {route: "homepage", action: "notify-only-error", payload: {message}})
 
   const gameId = createGame(ws)
-
-  // SET COOKIE
-  gameRequestMessage(reciverWs, ws.user, {gameId})
+  reciverPlayer.gameReqs.push({
+    sender: senderPlayer._id,
+    gameId
+  })
+  await reciverPlayer.save()
+  gameRequestMessage(reciverWs, {...ws.user, gameId}, {gameId})
 }
 export const handleGameAccept = async (ws: WS, {gameId}: Record<string, string>) => {
   let game = games.get(gameId)
@@ -191,6 +239,28 @@ export const handleGameAccept = async (ws: WS, {gameId}: Record<string, string>)
 
   game.players[p2Index] = ws
 
-
+  await clearGameRequests(ws, game.players)
   startGameMessage(game.players[0]!, game.players[1]!, gameId)
+}
+export const handleGameRequestDenied = async (ws: WS, gameId: Record<string, string>) => {
+  const senderPlayer: any = await Player.findById(ws.user.playerId)
+
+  if(!senderPlayer) return
+
+  senderPlayer.gameReqs = senderPlayer.gameReqs.filter(
+    (req: any) => req.gameId !== gameId.gameId
+  );
+
+  senderPlayer.save()
+}
+export const handleFriendRequestDenied = async (ws: WS, playerId: Record<string, string>) => {
+  const senderPlayer: any = await Player.findById(ws.user.playerId)
+
+  if(!senderPlayer) return
+  
+  senderPlayer.friendReqs = senderPlayer.friendReqs.filter(
+    (req: any) => req.username !== playerId.playerId
+  );
+
+  senderPlayer.save()
 }

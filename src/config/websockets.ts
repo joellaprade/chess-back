@@ -8,7 +8,7 @@ import { Instruction } from '../types/instruction';
 import { Game } from '../types/Game';
 import { Player } from '../models/Player';
 
-import { handleFriendRequest, handleRemoveFriend, handleGameRequest, handleGameAccept } from '../controllers/ws.controller';
+import { handleFriendRequest, handleRemoveFriend, handleGameRequest, handleGameAccept, handleGameRequestDenied, handleFriendRequestDenied } from '../controllers/ws.controller';
 import { handleMove } from '../controllers/game.controller';
 
 export let wss: WebSocketServer | null = null;
@@ -29,6 +29,7 @@ export const sendMsg = (ws: WS, payload: Instruction) => {
   ws.send(parse(payload))
 }
 
+// MESSAGES
 const onlinePlayerMessage = (ws: WS, reciverWs: WS) => {
   sendMsg(reciverWs, {
     route: "homepage",
@@ -43,6 +44,53 @@ const offlinePlayerMessage = (ws: WS, reciverWs: WS) => {
     payload: ws.user
   })
 }
+const handleHomePageMessages = async (ws: WS, instruction: Instruction) => {
+  switch(instruction.action) {
+    case "add-friend":
+      await handleFriendRequest(ws, instruction.payload)
+    break;
+    case "remove-friend": 
+      await handleRemoveFriend(ws, instruction.payload)
+    break;
+    case "game-request":
+      handleGameRequest(ws, instruction.payload)
+    break;
+    case "game-accept":
+      handleGameAccept(ws, instruction.payload)
+    break;
+    case "game-denied":
+      handleGameRequestDenied(ws, instruction.payload)
+    break;
+    case "friend-denied":
+      handleFriendRequestDenied(ws, instruction.payload)
+    break;
+  }  
+}
+const handleGameMessages = async (ws: WS, instruction: Instruction) => {
+  switch(instruction.action) {
+    case "move":
+      handleMove(ws, instruction.payload)
+      break
+    case "reconnect":
+      handleReconnect(ws, instruction.payload)
+      break
+  }
+}
+const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
+  // En base a la accion, decide que funcion correr
+  const instruction: Instruction = parse(data)
+
+  switch(instruction.route) {
+    case "homepage":
+      handleHomePageMessages(ws, instruction)
+    break;
+    case "game":
+      handleGameMessages(ws, instruction)
+    break;
+  }
+}
+
+// LOGIC
 const notifyPlayerOnlineStatus = async (ws: WS, player: Player) => {
   // Cuando un usuario se conecta, revisa si sus amigos estan conectados para notificarlos
   const friends = player.friends as unknown as Player[]
@@ -73,45 +121,7 @@ const handleReconnect = (ws: WS, payload: any) => {
   const playerIndex = oldWs.player?.isWhite ? 0 : 1
   game.players[playerIndex] = ws
 }
-const handleHomePageMessages = async (ws: WS, instruction: Instruction) => {
-  switch(instruction.action) {
-    case "add-friend":
-      await handleFriendRequest(ws, instruction.payload)
-    break;
-    case "remove-friend": 
-      await handleRemoveFriend(ws, instruction.payload)
-    break;
-    case "game-request":
-      handleGameRequest(ws, instruction.payload)
-    break;
-    case "game-accept":
-      handleGameAccept(ws, instruction.payload)
-    break;
-  }  
-}
-const handleGameMessages = async (ws: WS, instruction: Instruction) => {
-  switch(instruction.action) {
-    case "move":
-      handleMove(ws, instruction.payload)
-      break
-    case "reconnect":
-      handleReconnect(ws, instruction.payload)
-      break
-  }
-}
-const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
-  // En base a la accion, decide que funcion correr
-  const instruction: Instruction = parse(data)
 
-  switch(instruction.route) {
-    case "homepage":
-      handleHomePageMessages(ws, instruction)
-    break;
-    case "game":
-      handleGameMessages(ws, instruction)
-    break;
-  }
-}
 
 const handleConection = async (ws: WS, req: IncomingMessage) => {
   console.info("connected")
@@ -160,3 +170,4 @@ export const createWSS = () => {
 
   return { wss, clients }
 }
+ 

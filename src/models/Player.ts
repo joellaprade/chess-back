@@ -6,7 +6,12 @@ const playerSchema = new Schema({
   image: { type: String, default: "" },
   friends: { type: [Types.ObjectId], ref: "Player", default: [] },
   friendReqs: { type: [Types.ObjectId], ref: "Player", default: [] },
-  gameReqs: { type: [Types.ObjectId], ref: "Player", default: [] },
+  gameReqs: [
+    {
+      sender: { type: Types.ObjectId, ref: "Player" },
+      gameId: { type: String },
+    },
+  ],
   isOnline: { type: Boolean, default: false },
 });
 
