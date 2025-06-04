@@ -8,12 +8,13 @@ import { Instruction } from '../types/instruction';
 import { Game } from '../types/Game';
 import { Player } from '../models/Player';
 
-import { handleFriendRequest, handleRemoveFriend, handleGameRequest, handleGameAccept, handleGameRequestDenied, handleFriendRequestDenied } from '../controllers/ws.controller';
+import { handleRandomGameRequest, handleFriendRequest, handleRemoveFriend, handleGameRequest, handleGameAccept, handleGameRequestDenied, handleFriendRequestDenied, handleRandomGameRequestCancel } from '../controllers/ws.controller';
 import { handleMove } from '../controllers/game.controller';
 
 export let wss: WebSocketServer | null = null;
 export const clients: Map<string, WS> = new Map()
 export const games: Map<string, Game> = new Map()
+export const randomGames: Game[] = [];
 
 // utils
 export const parse = (data: WebSocket.RawData | Record<string, any>) => {
@@ -51,6 +52,12 @@ const handleHomePageMessages = async (ws: WS, instruction: Instruction) => {
     break;
     case "remove-friend": 
       await handleRemoveFriend(ws, instruction.payload)
+    break;
+    case "random-game-request":
+      handleRandomGameRequest(ws)
+    break;
+    case "random-game-cancel":
+      handleRandomGameRequestCancel(ws)
     break;
     case "game-request":
       handleGameRequest(ws, instruction.payload)

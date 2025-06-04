@@ -2,11 +2,18 @@ import crypto from "crypto";
 
 import { WS } from '../types/WS';
 
-import { clients, games, sendMsg } from '../config/websockets';
+import { clients, games, sendMsg, randomGames } from '../config/websockets';
 import { Player } from '../models/Player';
 import { Game } from "../types/Game";
 
 //messages
+const cancelGameMessage = (ws1: WS, error: string) => {
+  sendMsg(ws1, {
+    route: "homepage",
+    action: "notify-player-left", 
+    payload: {error}, 
+  })
+}
 const firstFriendRequestMessage = (ws: WS, reciverWs?: WS) => {
   if(!reciverWs) return
   
@@ -77,6 +84,45 @@ const startGameMessage = (ws1: WS, ws2: WS, gameId: string) => {
 }
 
 // LOGIC
+
+const validateWs = (game: Game) => {
+  const [ws1, ws2] = game.players
+  
+  if(!ws1 || !ws2) {
+    const [activeWs] = [ws1, ws2].filter(ws => ws !== null)
+    cancelGameMessage(activeWs, "No se pudo encontrar al segundo usuario")
+    return false
+  }
+
+  if(ws1.userId === ws2.userId) {
+    const [activeWs] = [ws1, ws2].filter(ws => ws !== null)
+    cancelGameMessage(activeWs, "El usuario esta repetido")
+    return false
+  }
+
+  const clientWs1 = clients.get(ws1?.user.playerId)
+  const clientWs2 = clients.get(ws2?.user.playerId)
+
+  if(!clientWs1 || !clientWs2) {
+    const [activeWs] = [clientWs1, clientWs2].filter(ws => ws !== undefined)
+    cancelGameMessage(activeWs, "El usuario se ha retirado de la plataforma")
+    return false
+  }
+
+  return true
+}
+const insertWsInRightColor = (ws: WS, game: Game) => {
+  let [p1Ws] = game.players.filter(p => p != null)
+  if(!p1Ws?.player) return
+
+  const isP1White = p1Ws.player.isWhite
+  const p2Index = isP1White ? 1 : 0
+  ws.player = {isWhite: !isP1White}
+
+  game.players[p2Index] = ws
+
+  return isP1White
+}
 const validateAddRequest = (reciverPlayer: Player | null, senderPlayer: Player | null) => {
   if (!reciverPlayer || !senderPlayer) 
     return {isValid: false, message: "No se pudo encontrar al jugador"}
@@ -128,7 +174,7 @@ const addFriends = async (reciverPlayer: Player, senderPlayer: Player) => {
   await senderPlayer.save()
   await reciverPlayer.save()
 }
-const createGame = (ws: WS) => {
+const createGame = (ws: WS, isRandom?: boolean) => {
   const gameId = crypto.randomBytes(8).toString("hex");
 
   ws.player = {isWhite: Math.random() > 0.5} 
@@ -142,8 +188,9 @@ const createGame = (ws: WS) => {
     isWhitesTurn: true
   }
 
-  games.set(gameId, game)
-
+  if(isRandom) randomGames.push(game)
+  else games.set(gameId, game)
+  
   return gameId
 }
 const clearGameRequests = async (sender: WS, players: [WS | null, WS | null]) => {
@@ -207,6 +254,27 @@ export const handleRemoveFriend = async (ws: WS, {username}: Record<string, any>
 
   removedFriendMessage(ws, reciverWs)
 }
+export const handleRandomGameRequest = async (ws: WS) => {
+  const randomGame = randomGames[randomGames.length - 1]
+
+  if(!randomGame){
+    createGame(ws, true)
+  } else {
+    const gameId = randomGame.gameId
+    ws.gameId = gameId
+
+    const isFirstWsWhite = insertWsInRightColor(ws, randomGame)
+    const firstWs = randomGame.players[isFirstWsWhite ? 0 : 1]
+
+    randomGames.splice(randomGames.length - 1, 1)
+    if(!firstWs) return
+    if(!validateWs(randomGame)) return
+
+    games.set(gameId, randomGame)
+    startGameMessage(ws, firstWs, gameId)
+  }
+
+}
 export const handleGameRequest = async (ws: WS, {playerId}: Record<string, string>) => {
   const reciverPlayer: Player | null = await Player.findById(playerId)
   const senderPlayer: Player | null = await Player.findById(ws.user.playerId)
@@ -229,17 +297,13 @@ export const handleGameAccept = async (ws: WS, {gameId}: Record<string, string>)
   let game = games.get(gameId)
   if(!game) return
   
-  let [senderWs] = game.players.filter(p => p != null)
-  if(!senderWs?.player) return
-  
-  const isP1White = senderWs.player.isWhite
-  const p2Index = isP1White ? 1 : 0
-  ws.player = {isWhite: !isP1White}
   ws.gameId = gameId
-
-  game.players[p2Index] = ws
-
+  insertWsInRightColor(ws, game)
   await clearGameRequests(ws, game.players)
+  if(!validateWs(game)) {
+    games.delete(gameId)
+    return
+  }
   startGameMessage(game.players[0]!, game.players[1]!, gameId)
 }
 export const handleGameRequestDenied = async (ws: WS, gameId: Record<string, string>) => {
@@ -263,4 +327,12 @@ export const handleFriendRequestDenied = async (ws: WS, playerId: Record<string,
   );
 
   senderPlayer.save()
+}
+export const handleRandomGameRequestCancel = (ws: WS) => {
+  const gameId = ws?.gameId
+  if(gameId) {
+    const randomGameIndex = randomGames.findIndex(game => game.gameId === gameId)
+    randomGames.splice(randomGameIndex, 1)
+    games.delete(gameId)
+  }
 }
