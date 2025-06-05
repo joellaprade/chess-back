@@ -1,3 +1,9 @@
-cuando mande "start-game", mandar datos del oponente
 
-agregar data de oponente a game context, al igual que mis datos, para mostrarlos en el tablero
+
+
+
+
+LINEA 402
+    if (blockingPiecesCount < 2 && !isAttackerRepeated) {
+
+esto puede que bloquee a knight
