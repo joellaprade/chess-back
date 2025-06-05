@@ -13,15 +13,16 @@ const sessionSchema = new Schema({
       image: { type: String, default: "" },
     },
   },
-  createdAt: {
-    type: Date,
-    default: new Date(Date.now()),
-  },
-  expiresAfter: {
-    type: Date,
-    index: { expires: 3600 },
-    default: () => new Date(Date.now() + 3600 * 24),
-  },
+  createdAt: { type: Date, default: Date.now, expires: 86400 } // 24 hours in seconds
+  // createdAt: {
+  //   type: Date,
+  //   default: new Date(Date.now()),
+  // },
+  // expiresAfter: {
+  //   type: Date,
+  //   index: { expires: 3600 * 24 },
+  //   default: () => new Date(Date.now() + 3600 * 24),
+  // },
 });
 
 export const Session = models.Session || model("Session", sessionSchema);
