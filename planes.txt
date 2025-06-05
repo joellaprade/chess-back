@@ -7,3 +7,8 @@ LINEA 402
     if (blockingPiecesCount < 2 && !isAttackerRepeated) {
 
 esto puede que bloquee a knight
+
+
+
+direction
+limit
