@@ -71,6 +71,7 @@ const gameRequestMessage = (reciverWs: WS, payload: any, replyPayload: any) => {
 }
 const startGameMessage = (ws1: WS, ws2: WS, gameId: string) => {
   const payload: any[] = [{...ws1.user, ...ws1.player!},{...ws2.user, ...ws2.player!}, gameId]
+
   sendMsg(ws1, {
     route: "homepage",
     action: "start-game",
@@ -176,8 +177,11 @@ const addFriends = async (reciverPlayer: Player, senderPlayer: Player) => {
 }
 const createGame = (ws: WS, isRandom?: boolean) => {
   const gameId = crypto.randomBytes(8).toString("hex");
+  const rand = Math.random()
+  const isWhite = rand > 0.5 
+  console.log(rand)
 
-  ws.player = {isWhite: Math.random() > 0.5} 
+  ws.player = {isWhite} 
   ws.gameId = gameId
 
   const playerWs1 = ws.player.isWhite ? ws : null
@@ -187,6 +191,7 @@ const createGame = (ws: WS, isRandom?: boolean) => {
     players: [playerWs1, playerWs2],
     isWhitesTurn: true
   }
+
 
   if(isRandom) randomGames.push(game)
   else games.set(gameId, game)
@@ -271,7 +276,7 @@ export const handleRandomGameRequest = async (ws: WS) => {
     if(!validateWs(randomGame)) return
 
     games.set(gameId, randomGame)
-    startGameMessage(ws, firstWs, gameId)
+    startGameMessage(randomGame.players[0]!, randomGame.players[1]!, ws, gameId)
   }
 
 }
