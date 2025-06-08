@@ -8,8 +8,8 @@ import { Instruction } from '../types/instruction';
 import { Game } from '../types/Game';
 import { Player } from '../models/Player';
 
-import { handleRandomGameRequest, handleFriendRequest, handleRemoveFriend, handleGameRequest, handleGameAccept, handleGameRequestDenied, handleFriendRequestDenied, handleRandomGameRequestCancel } from '../controllers/ws.controller';
-import { handleMove } from '../controllers/game.controller';
+import { handleFriendRequest, handleRemoveFriend, handleFriendRequestDenied, } from '../controllers/ws.controller';
+import { handleResignNotification, handleMove, handleRandomGameRequest, handleGameRequest, handleGameAccept, handleGameRequestDenied, handleRandomGameRequestCancel, handleDrawRequest, handleDrawAccept } from '../controllers/game.controller';
 
 export let wss: WebSocketServer | null = null;
 export const clients: Map<string, WS> = new Map()
@@ -53,6 +53,19 @@ const handleHomePageMessages = async (ws: WS, instruction: Instruction) => {
     case "remove-friend": 
       await handleRemoveFriend(ws, instruction.payload)
     break;
+    case "friend-denied":
+      handleFriendRequestDenied(ws, instruction.payload)
+    break;
+  }  
+}
+const handleGameMessages = async (ws: WS, instruction: Instruction) => {
+  switch(instruction.action) {
+    case "move":
+      handleMove(ws, instruction.payload)
+    break
+    case "reconnect":
+      handleReconnect(ws, instruction.payload)
+    break
     case "random-game-request":
       handleRandomGameRequest(ws)
     break;
@@ -68,19 +81,15 @@ const handleHomePageMessages = async (ws: WS, instruction: Instruction) => {
     case "game-denied":
       handleGameRequestDenied(ws, instruction.payload)
     break;
-    case "friend-denied":
-      handleFriendRequestDenied(ws, instruction.payload)
+    case "draw-request":
+      handleDrawRequest(ws)
     break;
-  }  
-}
-const handleGameMessages = async (ws: WS, instruction: Instruction) => {
-  switch(instruction.action) {
-    case "move":
-      handleMove(ws, instruction.payload)
-      break
-    case "reconnect":
-      handleReconnect(ws, instruction.payload)
-      break
+    case "draw-accept":
+      handleDrawAccept(ws)
+    break
+    case "resign":
+      handleResignNotification(ws)
+    break;
   }
 }
 const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
@@ -125,6 +134,7 @@ const handleReconnect = (ws: WS, payload: any) => {
 
   ws.player = oldWs.player
   ws.gameId = oldWs.gameId
+
   const playerIndex = oldWs.player?.isWhite ? 0 : 1
   game.players[playerIndex] = ws
 }
