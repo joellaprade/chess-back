@@ -24,6 +24,7 @@ import {
 
 export let wss: WebSocketServer | null = null;
 export const clients: Map<string, WS> = new Map()
+export const inactiveClients: Map<string, NodeJS.Timeout> = new Map();
 export const games: Map<string, Game> = new Map()
 export const randomGames: Game[] = [];
 
@@ -109,7 +110,7 @@ const handleGameMessages = async (ws: WS, instruction: Instruction) => {
 const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
   // En base a la accion, decide que funcion correr
   const instruction: Instruction = parse(data)
-  clients.forEach(c => console.log(c.user.username))
+
   switch(instruction.route) {
     case "homepage":
       handleHomePageMessages(ws, instruction)
@@ -121,6 +122,34 @@ const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
 }
 
 // LOGIC
+const handleGameStaleWs = (ws: WS) => {
+  const oppIndex = ws.player?.isWhite ? 1 : 0
+  const oppWs = games.get(ws.gameId || "")?.players[oppIndex]
+  if(!oppWs) return
+
+  inactiveClients.set(ws.user.playerId, setTimeout(() => {
+    // buscar ws del oponente con gameId
+    sendMsg(oppWs, {
+      route: "game",
+      action: "resign",
+      payload: ws.player?.isWhite ? "b" : "w"
+    })
+  }, 10000))
+  // dentro del timeout, tener logica para finalizar juego
+}
+const handleCloseWs = async (ws: WS) => {
+  const player = await Player.findById(ws.user.playerId)
+  if(!player) return
+  player.isOnline = false;
+  player.save()
+  .then(() => {
+    notifyPlayerOnlineStatus(ws, player)
+    
+    handleGameStaleWs(ws)
+  })
+  console.info('disconected')
+  clients.delete(ws.user.playerId)
+}
 const notifyPlayerOnlineStatus = async (ws: WS, player: Player) => {
   // Cuando un usuario se conecta, revisa si sus amigos estan conectados para notificarlos
   const friends = player.friends as unknown as Player[]
@@ -151,6 +180,12 @@ const handleReconnect = (ws: WS, payload: any) => {
 
   const playerIndex = oldWs.player?.isWhite ? 0 : 1
   game.players[playerIndex] = ws
+
+  const timeout = inactiveClients.get(ws.user.playerId)
+  if(!timeout) return
+
+  clearTimeout(timeout)
+  inactiveClients.get(ws.user.playerId)
 }
 const handleConection = async (ws: WS, req: IncomingMessage) => {
   console.info("connected")
@@ -180,15 +215,7 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
     handleMessage(ws, data)
   })
   ws.on('close', async () => {
-    const player = await Player.findById(ws.user.playerId)
-    if(!player) return
-    player.isOnline = false;
-    player.save()
-    .then(() => {
-      notifyPlayerOnlineStatus(ws, player)
-    })
-    console.info('disconected')
-    clients.delete(playerId)
+    handleCloseWs(ws)
   })
 }
 export const createWSS = () => {
