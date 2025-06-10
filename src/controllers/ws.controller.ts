@@ -92,6 +92,7 @@ export const handleFriendRequest = async (ws: WS, {username}: Record<string, any
 
   const {isValid, message} = validateAddRequest(reciverPlayer, senderPlayer)
 
+
   if(!isValid || !reciverPlayer || !senderPlayer) 
     return sendMsg(ws, {route: "homepage", action: "notify-only-error", payload: {message}})
 

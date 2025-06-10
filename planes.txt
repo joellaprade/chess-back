@@ -1,14 +1,21 @@
 
 
+al empezar el juego, se empieza un timer en el server
+Game debe tener un campo timers
+en estos campos, un timer corre mientras el otro espera
+cuando mandamos move, adjuntar tiempo de ambos oponentes
+
+{
+  w: 303,
+  b: 400
+}
+
+en ves de tener un timer constante, en cada move, rebajar tiempo de clocks{}
+ocupamos lastMoveTime y time
 
 
 
-LINEA 402
-    if (blockingPiecesCount < 2 && !isAttackerRepeated) {
-
-esto puede que bloquee a knight
+w 600, 1000
+b 600, 1000
 
 
-
-direction
-limit

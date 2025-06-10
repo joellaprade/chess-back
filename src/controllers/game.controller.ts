@@ -7,9 +7,9 @@ import { WS } from '../types/WS';
 
 
 // MESSAGES
-const sendMove = (reciverPlauer: WS, origin: number, destination: number) => {
-  const payload = {origin, destination};
-  sendMsg(reciverPlauer, {
+const sendMove = (reciverPlayer: WS, origin: number, destination: number, times: Record<string, any>) => {
+  const payload = {origin, destination, times};
+  sendMsg(reciverPlayer, {
     route: "game",
     action: "move",
     payload
@@ -81,6 +81,18 @@ const resignMessage = (ws: WS) => {
 }
 
 // LOGIC
+const initClocks = (game: Game) => {
+  game.times.bLastMove = Date.now()
+}
+const handleTimes = (game: Game) => {
+  const color = game.isWhitesTurn ? "w" : 'b'
+  const oppColor = game.isWhitesTurn ? "b" : 'w'
+  const times = game.times
+  const timeDeduccion = Math.floor((Date.now() - times[`${color}LastMove`]) / 1000)
+
+  times[`${oppColor}LastMove`] = Date.now()
+  times[`${oppColor}Time`] = times[`${oppColor}Time`] - timeDeduccion
+}
 const validateWs = (game: Game) => {
   const [ws1, ws2] = game.players
   
@@ -119,9 +131,12 @@ const insertWsInRightColor = (ws: WS, game: Game) => {
 
   return isP1White
 }
-const validateGameRequest = (reciverPlayer: Player | null, senderPlayer: Player | null) => {
+const validateGameRequest = (reciverPlayer: Player | null, senderPlayer: Player | null, reciverWs: WS | null) => {
   if (!reciverPlayer || !senderPlayer) 
     return {isValid: false, message: "No se pudo encontrar al jugador"}
+
+  if (!reciverWs) 
+    return {isValid: false, message: "El jugador no está conectado"}
 
   let isRepeated = false
   reciverPlayer.gameReqs.forEach(req => {
@@ -147,7 +162,13 @@ const createGame = (ws: WS, isRandom?: boolean) => {
   const game: Game = {
     gameId,
     players: [playerWs1, playerWs2],
-    isWhitesTurn: true
+    isWhitesTurn: true,
+    times: {
+      wTime: 600,
+      bTime: 600,
+      wLastMove: Date.now(),
+      bLastMove: Date.now(),
+    }
   }
 
 
@@ -198,6 +219,7 @@ export const handleRandomGameRequest = async (ws: WS) => {
     if(!validateWs(randomGame)) return
 
     games.set(gameId, randomGame)
+    initClocks(randomGame)
     startGameMessage(randomGame.players[0]!, randomGame.players[1]!, gameId)
   }
 
@@ -215,7 +237,7 @@ export const handleGameRequest = async (ws: WS, {playerId}: Record<string, strin
   const senderPlayer: Player | null = await Player.findById(ws.user.playerId)
   const reciverWs = clients.get(playerId)
   
-  const {isValid, message} = validateGameRequest(reciverPlayer, senderPlayer)
+  const {isValid, message} = validateGameRequest(reciverPlayer, senderPlayer, reciverWs)
   
   if(!isValid || !reciverPlayer || !senderPlayer || !reciverWs) 
     return sendMsg(ws, {route: "homepage", action: "notify-only-error", payload: {message}})
@@ -235,6 +257,8 @@ export const handleGameAccept = async (ws: WS, {gameId}: Record<string, string>)
   ws.gameId = gameId
   insertWsInRightColor(ws, game)
   await clearGameRequests(ws, game.players)
+  initClocks(game)
+  
   if(!validateWs(game)) {
     games.delete(gameId)
     return
@@ -267,9 +291,9 @@ export const handleMove = (ws: WS, {origin, destination}: {origin: number, desti
   const reciverPlayer = game.players[isWhitesTurn ? 1 : 0]
   if(!senderPlayer || !reciverPlayer) return
 
-  sendMove(reciverPlayer, origin, destination)
+  handleTimes(game)
+  sendMove(reciverPlayer, origin, destination, game.times)
 }
-export const handleWin = () => {}
 export const handleResignNotification = (ws: WS) => {
   const gameId = ws.gameId
   if(!gameId) return
@@ -297,7 +321,6 @@ export const handleDrawRequest = (ws: WS) => {
   drawRequestMessage(oppPlayer)
 }
 export const handleDrawAccept = (ws: WS) => {
-  // end game
   const gameId = ws.gameId
   if(!gameId) return
 
@@ -311,4 +334,9 @@ export const handleDrawAccept = (ws: WS) => {
 
   drawGameMessage(ws, p2)
 }
-export const handleResign = () => {}
+export const handleGameEnded = (ws: WS) => {
+  const gameId = ws.gameId
+  if(!gameId) return
+
+  games.delete(gameId)
+}

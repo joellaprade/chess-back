@@ -9,7 +9,18 @@ import { Game } from '../types/Game';
 import { Player } from '../models/Player';
 
 import { handleFriendRequest, handleRemoveFriend, handleFriendRequestDenied, } from '../controllers/ws.controller';
-import { handleResignNotification, handleMove, handleRandomGameRequest, handleGameRequest, handleGameAccept, handleGameRequestDenied, handleRandomGameRequestCancel, handleDrawRequest, handleDrawAccept } from '../controllers/game.controller';
+import { 
+  handleGameEnded, 
+  handleResignNotification, 
+  handleMove, 
+  handleRandomGameRequest, 
+  handleGameRequest, 
+  handleGameAccept, 
+  handleGameRequestDenied, 
+  handleRandomGameRequestCancel, 
+  handleDrawRequest, 
+  handleDrawAccept
+ } from '../controllers/game.controller';
 
 export let wss: WebSocketServer | null = null;
 export const clients: Map<string, WS> = new Map()
@@ -90,12 +101,15 @@ const handleGameMessages = async (ws: WS, instruction: Instruction) => {
     case "resign":
       handleResignNotification(ws)
     break;
+    case "game-ended":
+      handleGameEnded(ws)
+    break
   }
 }
 const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
   // En base a la accion, decide que funcion correr
   const instruction: Instruction = parse(data)
-
+  clients.forEach(c => console.log(c.user.username))
   switch(instruction.route) {
     case "homepage":
       handleHomePageMessages(ws, instruction)
@@ -138,8 +152,6 @@ const handleReconnect = (ws: WS, payload: any) => {
   const playerIndex = oldWs.player?.isWhite ? 0 : 1
   game.players[playerIndex] = ws
 }
-
-
 const handleConection = async (ws: WS, req: IncomingMessage) => {
   console.info("connected")
 
