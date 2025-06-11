@@ -12,4 +12,5 @@ export const User = models.User || model("User", userSchema);
 
 export type User = InferSchemaType<typeof userSchema> & {
   _id: Types.ObjectId;
+  save: () => Promise<void>
 };

@@ -28,4 +28,5 @@ const sessionSchema = new Schema({
 export const Session = models.Session || model("Session", sessionSchema);
 export type Session = InferSchemaType<typeof sessionSchema> & {
   _id: Types.ObjectId;
+  save: () => Promise<void>
 };

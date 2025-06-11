@@ -131,7 +131,7 @@ const insertWsInRightColor = (ws: WS, game: Game) => {
 
   return isP1White
 }
-const validateGameRequest = (reciverPlayer: Player | null, senderPlayer: Player | null, reciverWs: WS | null) => {
+const validateGameRequest = (reciverPlayer: Player | null, senderPlayer: Player | null, reciverWs: WS | undefined) => {
   if (!reciverPlayer || !senderPlayer) 
     return {isValid: false, message: "No se pudo encontrar al jugador"}
 

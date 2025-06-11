@@ -18,4 +18,5 @@ const playerSchema = new Schema({
 export const Player = models.Player || model("Player", playerSchema);
 export type Player = InferSchemaType<typeof playerSchema> & {
   _id: Types.ObjectId;
+  save: () => Promise<void>
 };
