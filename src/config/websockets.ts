@@ -1,5 +1,4 @@
 import WebSocket from 'ws';
-import * as cookie from 'cookie';
 import { IncomingMessage } from 'http';
 import { WebSocketServer } from 'ws';
 import url from 'url';
@@ -22,7 +21,6 @@ import {
   handleDrawRequest, 
   handleDrawAccept
  } from '../controllers/game.controller';
-import logger from './winston';
 
 export let wss: WebSocketServer | null = null;
 export const clients: Map<string, WS> = new Map()
@@ -112,7 +110,6 @@ const handleGameMessages = async (ws: WS, instruction: Instruction) => {
 const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
   // En base a la accion, decide que funcion correr
   const instruction: Instruction = parse(data)
-  console.info('ran message')
   switch(instruction.route) {
     case "homepage":
       handleHomePageMessages(ws, instruction)
@@ -146,7 +143,6 @@ const handleCloseWs = async (ws: WS) => {
   player.save()
   .then(() => {
     notifyPlayerOnlineStatus(ws, player)
-    
     handleGameStaleWs(ws)
   })
   console.info('disconected')
@@ -156,9 +152,6 @@ const notifyPlayerOnlineStatus = async (ws: WS, player: Player) => {
   // Cuando un usuario se conecta, revisa si sus amigos estan conectados para notificarlos
   const friends = player.friends as unknown as Player[]
   for(let i = 0; i < friends.length; i++) {
-    if(!friends[i].isOnline) 
-      continue
-
     const reciverWs = clients.get(friends[i]._id.toString())
     if(!reciverWs)
       continue
@@ -190,12 +183,9 @@ const handleReconnect = (ws: WS, payload: any) => {
   inactiveClients.get(ws.user.playerId)
 }
 const handleConection = async (ws: WS, req: IncomingMessage) => {
-  console.info("WS Connected")
+  console.info("connected")
 
-  // const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : undefined
-  // const userId = cookies?.userId
-
-    const parsedUrl = url.parse(req.url || '', true);
+  const parsedUrl = url.parse(req.url || '', true);
   const userId = parsedUrl.query.userId;
 
   if (!userId || typeof userId !== 'string') {
@@ -203,8 +193,6 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
     return;
   }
   
-  if(!userId) return
-
   let player: Player | null = await Player.findOne({userId}).populate('friends')
   if(!player) return
   
@@ -215,8 +203,6 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
     username: player.username,
     image: player?.image
   }  
-  console.log('sendign msg')
-  sendMsg(ws, {action: "notify-connected", payload: {e: 'e'}} as Instruction)
   
   player.isOnline = true;
   await player.save()
@@ -227,7 +213,7 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
     handleMessage(ws, data)
   })
   ws.on('close', async () => {
-    handleCloseWs(ws)
+    await handleCloseWs(ws)
   })
 }
 export const createWSS = () => {

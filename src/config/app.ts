@@ -5,7 +5,6 @@ import cors from "cors"
 import cookieParser from "cookie-parser"
 import helmet from "helmet"
 import routes from "../routes/index"
-import logger from './winston';
 
 const app = express()
 
@@ -16,11 +15,6 @@ const corsOptions = {
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 };
-
-app.use((req, res, next) => {
-  logger.info(`${req.method} ${req.url}`);
-  next();
-});
 
 app.use(helmet()) 
 app.use(cookieParser())
