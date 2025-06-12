@@ -206,6 +206,7 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
     username: player.username,
     image: player?.image
   }  
+  console.log('sendign msg')
   sendMsg(ws, {action: "notify-connected", payload: {e: 'e'}} as Instruction)
   
   player.isOnline = true;
