@@ -111,7 +111,7 @@ const handleGameMessages = async (ws: WS, instruction: Instruction) => {
 const handleMessage = async (ws: WS, data: WebSocket.RawData) => {
   // En base a la accion, decide que funcion correr
   const instruction: Instruction = parse(data)
-
+  console.info('ran message')
   switch(instruction.route) {
     case "homepage":
       handleHomePageMessages(ws, instruction)
