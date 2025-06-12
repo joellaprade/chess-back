@@ -189,7 +189,7 @@ const handleReconnect = (ws: WS, payload: any) => {
   inactiveClients.get(ws.user.playerId)
 }
 const handleConection = async (ws: WS, req: IncomingMessage) => {
-  console.info("Connected")
+  console.info("WS Connected")
 
   const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : undefined
   const userId = cookies?.userId
