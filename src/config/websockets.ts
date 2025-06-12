@@ -21,6 +21,7 @@ import {
   handleDrawRequest, 
   handleDrawAccept
  } from '../controllers/game.controller';
+import logger from './winston';
 
 export let wss: WebSocketServer | null = null;
 export const clients: Map<string, WS> = new Map()
@@ -189,6 +190,7 @@ const handleReconnect = (ws: WS, payload: any) => {
 }
 const handleConection = async (ws: WS, req: IncomingMessage) => {
   console.info("connected")
+  logger.info("Connected")
 
   const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : undefined
   const userId = cookies?.userId
