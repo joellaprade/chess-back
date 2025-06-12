@@ -190,7 +190,6 @@ const handleReconnect = (ws: WS, payload: any) => {
 }
 const handleConection = async (ws: WS, req: IncomingMessage) => {
   console.info("connected")
-  logger.info("Connected")
 
   const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : undefined
   const userId = cookies?.userId
@@ -207,6 +206,7 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
     username: player.username,
     image: player?.image
   }  
+  sendMsg(ws, {action: "notify-connected", payload: {e: 'e'}} as Instruction)
   
   player.isOnline = true;
   await player.save()
