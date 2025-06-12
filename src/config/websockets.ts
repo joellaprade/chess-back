@@ -193,13 +193,11 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
 
   const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : undefined
   const userId = cookies?.userId
-    console.log(cookies, userId)
-
+  console.log(cookies, userId)
   if(!userId) return
-  console.log('has user id')
+
   let player: Player | null = await Player.findOne({userId}).populate('friends')
   if(!player) return
-  console.log('has player')
   
   const playerId = player._id.toString()
   ws.userId = userId
