@@ -2,6 +2,7 @@ import WebSocket from 'ws';
 import * as cookie from 'cookie';
 import { IncomingMessage } from 'http';
 import { WebSocketServer } from 'ws';
+import url from 'url';
 
 import { WS } from '../types/WS';
 import { Instruction } from '../types/instruction';
@@ -191,9 +192,17 @@ const handleReconnect = (ws: WS, payload: any) => {
 const handleConection = async (ws: WS, req: IncomingMessage) => {
   console.info("WS Connected")
 
-  const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : undefined
-  const userId = cookies?.userId
-  console.log(req.headers)
+  // const cookies = req.headers.cookie ? cookie.parse(req.headers.cookie) : undefined
+  // const userId = cookies?.userId
+
+    const parsedUrl = url.parse(req.url || '', true);
+  const userId = parsedUrl.query.userId;
+
+  if (!userId || typeof userId !== 'string') {
+    ws.close(); 
+    return;
+  }
+  
   if(!userId) return
 
   let player: Player | null = await Player.findOne({userId}).populate('friends')
