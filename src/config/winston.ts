@@ -10,7 +10,7 @@ const logger = winston.createLogger({
   ),
   transports: [
     new winston.transports.Console(),
-    new winston.transports.File({ filename: '/var/log/chess-backend-logs' })
+    new winston.transports.File({ filename: '/var/log/chess-backend-logs/app.log' })
   ]
 });
 
