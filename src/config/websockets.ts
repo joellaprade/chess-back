@@ -214,6 +214,7 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
   clients.set(playerId, ws)
 
   ws.on('message', (data) => {
+  console.info('🧭 message received', data.toString());
     handleMessage(ws, data)
   })
   ws.on('close', async () => {
