@@ -195,9 +195,10 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
   const userId = cookies?.userId
   
   if(!userId) return
-
+  console.log('has user id')
   let player: Player | null = await Player.findOne({userId}).populate('friends')
   if(!player) return
+  console.log('has player')
   
   const playerId = player._id.toString()
   ws.userId = userId
@@ -215,7 +216,6 @@ const handleConection = async (ws: WS, req: IncomingMessage) => {
   clients.set(playerId, ws)
 
   ws.on('message', (data) => {
-  console.info('🧭 message received', data.toString());
     handleMessage(ws, data)
   })
   ws.on('close', async () => {
